@@ -3,8 +3,8 @@ package api
 import (
 	"errors"
 
-	"github.com/rcholic/rally_bargain/user/models"
-	"github.com/rcholic/rally_bargain/user/services"
+	"github.com/rcholic/CognitoREST/models"
+	"github.com/rcholic/CognitoREST/services"
 )
 
 // corelog "log"

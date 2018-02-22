@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/go-kit/kit/log"
-	"github.com/rcholic/rally_bargain/user/api"
+	"github.com/rcholic/CognitoREST/api"
 )
 
 var (

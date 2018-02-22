@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	cogIdp "github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
-	"github.com/rcholic/rally_bargain/user/models"
+	"github.com/rcholic/CognitoREST/models"
 	log "github.com/sirupsen/logrus"
 )
 
