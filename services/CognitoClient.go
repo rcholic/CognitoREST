@@ -11,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	cogIdp "github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
-	"github.com/rcholic/CognitoREST/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -19,10 +18,10 @@ import (
 type AWSCognito interface {
 	Init() error
 	SecretHash(string) string
-	SignUp(string, string, string, string) (models.User, error)
-	SignIn(string, string) (models.User, error)
-	GetUser(string) (models.User, error)
-	ConfirmSignUp(string) (models.User, bool)
+	SignUp(string, string, string, string) (*cogIdp.SignUpOutput, error)
+	SignIn(string, string) (*cogIdp.InitiateAuthOutput, error)
+	GetUser(string) (*cogIdp.AdminGetUserOutput, error)
+	ConfirmSignUp(string) bool
 }
 
 /**
@@ -79,7 +78,7 @@ func (c *CognitoClient) SecretHash(username string) string {
 }
 
 // SignUp registers a user given the username info
-func (c *CognitoClient) SignUp(username, password, confirmPass, email string) (models.User, error) {
+func (c *CognitoClient) SignUp(username, password, confirmPass, email string) (*cogIdp.SignUpOutput, error) {
 	// SignUp API: https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_SignUp.html
 	// TODO: does this user exist already?
 	// TODO: validate password and confirm pass, email...
@@ -92,22 +91,28 @@ func (c *CognitoClient) SignUp(username, password, confirmPass, email string) (m
 		ClientId:       aws.String(clientID),
 	}
 
-	res, err := idpClient.SignUp(&userInput)
-	if err != nil {
-		log.Fatalf("err in cognito client sign up %v\n", err)
-	}
-	log.Info("sign up success, res: %v\n", res)
-	/**
-	output:
-	{"level":"info","msg":"sign up success, res: %v\n{\n  CodeDeliveryDetails: {\n    AttributeName: \"email\",\n    DeliveryMedium: \"EMAIL\",\n    Destination: \"g***@g***.com\"\n  },\n  UserConfirmed: false,\n  UserSub: \"b6e60099-4efa-4b37-a799-d82e314a71e9\"\n}","time":"2018-02-19T21:46:18-08:00"}
-
-	*/
-
-	return models.User{}, nil
+	return idpClient.SignUp(&userInput)
 }
 
-func (c *CognitoClient) SignIn(username, password string) (models.User, error) {
-	return models.User{}, nil
+func (c *CognitoClient) SignIn(username, password string) (*cogIdp.InitiateAuthOutput, error) {
+
+	userInput := cogIdp.InitiateAuthInput{
+		AnalyticsMetadata: &cogIdp.AnalyticsMetadataType{
+			AnalyticsEndpointId: aws.String("no value"), // TODO if necessary
+		},
+		AuthFlow: aws.String("USER_PASSWORD_AUTH"),
+		AuthParameters: map[string]*string{
+			"Username": aws.String(username),
+			"Password": aws.String(password),
+		},
+		ClientMetadata: map[string]*string{}, // for validation with pre-set lambda
+		ClientId:       aws.String(clientID),
+		UserContextData: &cogIdp.UserContextDataType{
+			EncodedData: aws.String("ip:192.168.1.169"),
+		},
+	}
+
+	return idpClient.InitiateAuth(&userInput)
 }
 
 /**
@@ -115,24 +120,18 @@ output:
 
 {"level":"info","msg":"output from getting user: %v\n{\n  Enabled: true,\n  UserAttributes: [{\n      Name: \"sub\",\n      Value: \"b6e60099-4efa-4b37-a799-d82e314a71e9\"\n    },{\n      Name: \"email_verified\",\n      Value: \"false\"\n    },{\n      Name: \"email\",\n      Value: \"gwang81@gmail.com\"\n    }],\n  UserCreateDate: 2018-02-20 05:46:17 +0000 UTC,\n  UserLastModifiedDate: 2018-02-20 05:46:17 +0000 UTC,\n  UserStatus: \"UNCONFIRMED\",\n  Username: \"gwang81\"\n}","time":"2018-02-19T22:10:48-08:00"}
 */
-func (c *CognitoClient) GetUser(username string) (models.User, error) {
+func (c *CognitoClient) GetUser(username string) (*cogIdp.AdminGetUserOutput, error) {
 
 	userInput := cogIdp.AdminGetUserInput{
 		UserPoolId: aws.String(userpoolID),
 		Username:   aws.String(username),
 	}
 
-	output, err := idpClient.AdminGetUser(&userInput)
-	if err != nil {
-		log.Fatalf("err in getting user: %v\n", err)
-	}
-	log.Info("output from getting user: %v\n", output)
-
-	return models.User{}, nil
+	return idpClient.AdminGetUser(&userInput)
 }
 
-func (c *CognitoClient) ConfirmSignUp(code string) (models.User, bool) {
-	return models.User{}, true
+func (c *CognitoClient) ConfirmSignUp(code string) bool {
+	return false
 }
 
 // verify token: https://aws.amazon.com/premiumsupport/knowledge-center/decode-verify-cognito-json-token/

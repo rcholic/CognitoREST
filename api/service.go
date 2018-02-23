@@ -3,7 +3,7 @@ package api
 import (
 	"errors"
 
-	"github.com/rcholic/CognitoREST/models"
+	cogIdp "github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	"github.com/rcholic/CognitoREST/services"
 )
 
@@ -16,10 +16,10 @@ var (
 var cognitoClient = new(services.CognitoClient)
 
 type UserService interface {
-	SignUp(username, password, confirmPass, email string) (models.User, error) // register user
-	SignIn(email, password string) (models.User, error)                        // InitiateAuth or AdminInitiateAuth ? TODO: return token string
-	GetUser(username string) (models.User, error)                              // AdminGetUser or GetUser ?
-	ConfirmSingUp(code string) (models.User, error)
+	SignUp(username, password, confirmPass, email string) (*cogIdp.SignUpOutput, error) // register user
+	SignIn(username, password string) (*cogIdp.InitiateAuthOutput, error)               // InitiateAuth or AdminInitiateAuth ? TODO: return token string
+	GetUser(username string) (*cogIdp.AdminGetUserOutput, error)                        // AdminGetUser or GetUser ?
+	ConfirmSingUp(code string) bool
 }
 
 type localUserService struct{}
@@ -32,26 +32,22 @@ func init() {
 	cognitoClient.Init()
 }
 
-func (s *localUserService) SignUp(username, password, confirmPass, email string) (models.User, error) {
+func (s *localUserService) SignUp(username, password, confirmPass, email string) (*cogIdp.SignUpOutput, error) {
 	if username == "" || password == "" || email == "" || password != confirmPass {
-		return models.User{}, ErrUnauthorized // TODO: correct the err type here
+		return &cogIdp.SignUpOutput{}, ErrUnauthorized // TODO: correct the err type here
 	}
 	return cognitoClient.SignUp(username, password, confirmPass, email)
 }
 
-func (s *localUserService) SignIn(email, password string) (models.User, error) {
-	return models.User{}, nil // TODO:
+func (s *localUserService) SignIn(username, password string) (*cogIdp.InitiateAuthOutput, error) {
+	return cognitoClient.SignIn(username, password)
 }
 
-func (s *localUserService) GetUser(username string) (models.User, error) {
+func (s *localUserService) GetUser(username string) (*cogIdp.AdminGetUserOutput, error) {
 	// TODO: get user and handle error
-	u, _ := cognitoClient.GetUser(username)
-
-	u.Sanitize()
-
-	return u, nil
+	return cognitoClient.GetUser(username)
 }
 
-func (s *localUserService) ConfirmSingUp(code string) (models.User, error) {
-	return models.User{}, nil
+func (s *localUserService) ConfirmSingUp(code string) bool {
+	return cognitoClient.ConfirmSignUp(code)
 }
