@@ -19,7 +19,7 @@ type UserService interface {
 	SignUp(username, password, confirmPass, email string) (*cogIdp.SignUpOutput, error) // register user
 	SignIn(username, password string) (*cogIdp.InitiateAuthOutput, error)               // InitiateAuth or AdminInitiateAuth ? TODO: return token string
 	GetUser(username string) (*cogIdp.AdminGetUserOutput, error)                        // AdminGetUser or GetUser ?
-	ConfirmSingUp(code string) bool
+	ConfirmSingUp(code, username string) (*cogIdp.ConfirmSignUpOutput, error)
 }
 
 type localUserService struct{}
@@ -48,6 +48,6 @@ func (s *localUserService) GetUser(username string) (*cogIdp.AdminGetUserOutput,
 	return cognitoClient.GetUser(username)
 }
 
-func (s *localUserService) ConfirmSingUp(code string) bool {
-	return cognitoClient.ConfirmSignUp(code)
+func (s *localUserService) ConfirmSingUp(code, username string) (*cogIdp.ConfirmSignUpOutput, error) {
+	return cognitoClient.ConfirmSignUp(code, username)
 }

@@ -21,7 +21,7 @@ type AWSCognito interface {
 	SignUp(string, string, string, string) (*cogIdp.SignUpOutput, error)
 	SignIn(string, string) (*cogIdp.InitiateAuthOutput, error)
 	GetUser(string) (*cogIdp.AdminGetUserOutput, error)
-	ConfirmSignUp(string) bool
+	ConfirmSignUp(string) (*cogIdp.ConfirmSignUpOutput, error)
 }
 
 /**
@@ -130,8 +130,20 @@ func (c *CognitoClient) GetUser(username string) (*cogIdp.AdminGetUserOutput, er
 	return idpClient.AdminGetUser(&userInput)
 }
 
-func (c *CognitoClient) ConfirmSignUp(code string) bool {
-	return false
+func (c *CognitoClient) ConfirmSignUp(code, username string) (*cogIdp.ConfirmSignUpOutput, error) {
+	userInput := cogIdp.ConfirmSignUpInput{
+		AnalyticsMetadata: &cogIdp.AnalyticsMetadataType{
+			AnalyticsEndpointId: aws.String("no value"), // TODO:
+		},
+		ClientId:           aws.String(clientID),
+		ConfirmationCode:   aws.String(code),
+		ForceAliasCreation: aws.Bool(false), // see https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_ConfirmSignUp.html#CognitoUserPools-ConfirmSignUp-request-ForceAliasCreation
+		SecretHash:         aws.String(c.SecretHash(username)),
+		Username:           aws.String(username),
+	}
+	log.Infof("confirming sing up for code %s and username: %s", code, username)
+
+	return idpClient.ConfirmSignUp(&userInput)
 }
 
 // verify token: https://aws.amazon.com/premiumsupport/knowledge-center/decode-verify-cognito-json-token/

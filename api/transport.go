@@ -26,14 +26,14 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 		httptransport.ServerErrorEncoder(encodeError),
 	}
 
-	r.Methods("POST").Path("/signup").Handler(httptransport.NewServer(
+	r.Methods("POST").Path("/user/signup").Handler(httptransport.NewServer(
 		e.SignUpEndpoint,
 		decodeSignUpRequest,
 		encodeResponse,
 		options...,
 	))
 
-	r.Methods("POST").Path("/signin").Handler(httptransport.NewServer(
+	r.Methods("POST").Path("/user/signin").Handler(httptransport.NewServer(
 		e.SignInEndpoint,
 		decodeSignInRequest,
 		encodeResponse,
@@ -47,7 +47,31 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 		options...,
 	))
 
+	r.Methods("GET").Path("/user/{username}/{code}").Handler(httptransport.NewServer(
+		e.ConfirmSignUpEndpoint,
+		decodeConfirmSignUpRequest,
+		encodeResponse,
+		options...,
+	))
+
 	return r
+}
+
+func decodeConfirmSignUpRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	confirmRequest := confirmSignUpRequest{}
+	defer r.Body.Close()
+
+	vars := mux.Vars(r)
+	code, ok1 := vars["code"]
+	username, ok2 := vars["username"]
+
+	if !ok1 || !ok2 {
+		return confirmRequest, ErrInvalidRequest
+	}
+	confirmRequest.Code = code
+	confirmRequest.Username = username
+
+	return confirmRequest, nil
 }
 
 func decodeGetUserRequest(_ context.Context, r *http.Request) (interface{}, error) {

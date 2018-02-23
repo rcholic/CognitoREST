@@ -46,9 +46,7 @@ func MakeGetUserEndpoint(s UserService) endpoint.Endpoint {
 func MakeConfirmSignUpEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(confirmSignUpRequest)
-		success := s.ConfirmSingUp(req.Code)
-
-		return confirmSignUpResponse{success}, nil // TODO: remove the field error
+		return s.ConfirmSingUp(req.Code, req.Username)
 	}
 }
 
@@ -69,9 +67,6 @@ type getuserRequest struct {
 }
 
 type confirmSignUpRequest struct {
-	Code string
-}
-
-type confirmSignUpResponse struct {
-	Confirmed bool
+	Code     string
+	Username string
 }
