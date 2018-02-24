@@ -102,8 +102,9 @@ func (c *CognitoClient) SignIn(username, password string) (*cogIdp.InitiateAuthO
 		},
 		AuthFlow: aws.String("USER_PASSWORD_AUTH"),
 		AuthParameters: map[string]*string{
-			"Username": aws.String(username),
-			"Password": aws.String(password),
+			"USERNAME":    aws.String(username),
+			"PASSWORD":    aws.String(password),
+			"SECRET_HASH": aws.String(c.SecretHash(username)),
 		},
 		ClientMetadata: map[string]*string{}, // for validation with pre-set lambda
 		ClientId:       aws.String(clientID),

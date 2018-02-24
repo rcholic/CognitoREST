@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/go-kit/kit/log"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
@@ -89,34 +91,35 @@ func decodeGetUserRequest(_ context.Context, r *http.Request) (interface{}, erro
 }
 
 func decodeSignInRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	reqBody := signinRequest{}
+	signinReq := signinRequest{}
 	defer r.Body.Close()
 
-	// if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&signinReq); err != nil {
+		logrus.Errorf("wrong decoding json in signin: %s\n", err)
+		return signinReq, ErrInvalidRequest
+	}
+	// var props map[string]string
 
+	// err := BindJSON(r.Body, &props)
+	// if err != nil {
+	// 	return reqBody, err
 	// }
-	var props map[string]string
+	// username, ok1 := props["username"]
+	// password, ok2 := props["password"]
+	// if !ok1 || !ok2 {
+	// 	return reqBody, ErrInvalidRequest
+	// }
+	// reqBody.Username = username
+	// reqBody.Password = password
 
-	err := BindJSON(r.Body, &props)
-	if err != nil {
-		return reqBody, err
-	}
-	email, ok1 := props["email"]
-	password, ok2 := props["password"]
-	if !ok1 || !ok2 {
-		return reqBody, ErrInvalidRequest
-	}
-	reqBody.Email = email
-	reqBody.Password = password
-
-	return reqBody, err
+	return signinReq, nil
 }
 
 func decodeSignUpRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	signupReq := signupRequest{}
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&signupReq); err != nil {
-		fmt.Println("wrong decoding json...")
+		logrus.Errorf("wrong decoding json: %s\n", err)
 		return signupReq, ErrInvalidRequest
 	}
 

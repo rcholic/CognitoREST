@@ -32,7 +32,7 @@ func MakeSignUpEndpoint(s UserService) endpoint.Endpoint {
 func MakeSignInEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(signinRequest)
-		return s.SignIn(req.Email, req.Password)
+		return s.SignIn(req.Username, req.Password)
 	}
 }
 
@@ -58,7 +58,7 @@ type signupRequest struct {
 }
 
 type signinRequest struct {
-	Email    string
+	Username string
 	Password string
 }
 
