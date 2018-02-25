@@ -56,3 +56,7 @@ func main() {
 
 	logger.Log("exit", <-errc)
 }
+
+// SPA authentication: https://onedrive.live.com/?authkey=%21AAPTU-jr3dRC4XY&cid=01965DB52C0BCA35&id=1965DB52C0BCA35%211660&parId=1965DB52C0BCA35%211658&o=OneUp
+// https://github.com/IdentityServer/IdentityServer3/issues/2039
+// video: https://vimeo.com/131636653

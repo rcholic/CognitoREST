@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"reflect"
@@ -98,20 +97,6 @@ func decodeSignInRequest(_ context.Context, r *http.Request) (interface{}, error
 		logrus.Errorf("wrong decoding json in signin: %s\n", err)
 		return signinReq, ErrInvalidRequest
 	}
-	// var props map[string]string
-
-	// err := BindJSON(r.Body, &props)
-	// if err != nil {
-	// 	return reqBody, err
-	// }
-	// username, ok1 := props["username"]
-	// password, ok2 := props["password"]
-	// if !ok1 || !ok2 {
-	// 	return reqBody, ErrInvalidRequest
-	// }
-	// reqBody.Username = username
-	// reqBody.Password = password
-
 	return signinReq, nil
 }
 
@@ -159,7 +144,7 @@ func BindJSON(data io.Reader, dest interface{}) error {
 
 	if err := decoder.Decode(dest); err != nil {
 		// l4g.Debug(err)
-		fmt.Printf("err: %v\n", err)
+		logrus.Errorf("err: %v\n", err)
 		return err
 	}
 

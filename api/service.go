@@ -7,13 +7,10 @@ import (
 	"github.com/rcholic/CognitoREST/services"
 )
 
-// corelog "log"
-
 var (
 	ErrUnauthorized = errors.New("Unauthorized")
+	cognitoClient   = new(services.CognitoClient)
 )
-
-var cognitoClient = new(services.CognitoClient)
 
 type UserService interface {
 	SignUp(username, password, confirmPass, email string) (*cogIdp.SignUpOutput, error) // register user
