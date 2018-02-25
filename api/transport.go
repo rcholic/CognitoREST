@@ -55,7 +55,43 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 		options...,
 	))
 
+	r.Methods("POST").Path("/user/forgotpassword").Handler(httptransport.NewServer(
+		e.ForgotPasswordEndpoint,
+		decodeForgotPasswordRequest,
+		encodeResponse,
+		options...,
+	))
+
+	r.Methods("POST").Path("/user/resetpassword").Handler(httptransport.NewServer(
+		e.ConfirmForgotPasswordEndpoint,
+		decodeConfirmForgotPasswordRequest,
+		encodeResponse,
+		options...,
+	))
+
 	return r
+}
+
+func decodeConfirmForgotPasswordRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	confirmForgotRequest := confirmForgotPasswordRequest{}
+	defer r.Body.Close()
+
+	if err := json.NewDecoder(r.Body).Decode(&confirmForgotRequest); err != nil {
+		logrus.Errorf("wrong decoding json in confirm forgot password request: %s\n", err)
+		return confirmForgotRequest, ErrInvalidRequest
+	}
+	return confirmForgotRequest, nil
+}
+
+func decodeForgotPasswordRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	forgotPassRequest := forgotPasswordRequest{}
+	defer r.Body.Close()
+
+	if err := json.NewDecoder(r.Body).Decode(&forgotPassRequest); err != nil {
+		logrus.Errorf("wrong decoding json in forgot password request: %s\n", err)
+		return forgotPassRequest, ErrInvalidRequest
+	}
+	return forgotPassRequest, nil
 }
 
 func decodeConfirmSignUpRequest(_ context.Context, r *http.Request) (interface{}, error) {

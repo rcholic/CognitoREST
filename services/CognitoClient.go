@@ -32,6 +32,8 @@ type AWSCognito interface {
 	GetUser(string) (*cogIdp.AdminGetUserOutput, error)
 	ConfirmSignUp(string) (*cogIdp.ConfirmSignUpOutput, error)
 	ValidateToken(string, map[string]JWKKey) error
+	ForgotPassword(string) (*cogIdp.ForgotPasswordOutput, error)
+	ConfirmForgotPassword(string, string, string) (*cogIdp.ConfirmForgotPasswordOutput, error)
 }
 
 /**
@@ -106,10 +108,7 @@ func (c *CognitoClient) Init() error {
 	idpClient = cogIdp.New(session.New(), &aws.Config{Region: aws.String(region), LogLevel: aws.LogLevel(1)})
 	jwkURL = fmt.Sprintf("https://cognito-idp.%v.amazonaws.com/%v/.well-known/jwks.json", region, userpoolID)
 	jwkMap = getJWK(jwkURL)
-	log.Printf("CognitoClient has been initiated in Init(), jwkURL: %s\n", jwkURL)
-	for k, v := range jwkMap {
-		fmt.Printf("key = %s, value = %v\n", k, v)
-	}
+	log.Println("CognitoClient has been initiated in Init()")
 
 	return nil
 }
@@ -154,7 +153,7 @@ func (c *CognitoClient) SignIn(username, password string) (*cogIdp.InitiateAuthO
 		ClientMetadata: map[string]*string{}, // for validation with pre-set lambda
 		ClientId:       aws.String(clientID),
 		UserContextData: &cogIdp.UserContextDataType{
-			EncodedData: aws.String("ip:192.168.1.169"),
+			EncodedData: aws.String("encoded string here"),
 		},
 	}
 
@@ -178,7 +177,7 @@ func (c *CognitoClient) GetUser(username string) (*cogIdp.AdminGetUserOutput, er
 func (c *CognitoClient) ConfirmSignUp(code, username string) (*cogIdp.ConfirmSignUpOutput, error) {
 	userInput := cogIdp.ConfirmSignUpInput{
 		AnalyticsMetadata: &cogIdp.AnalyticsMetadataType{
-			AnalyticsEndpointId: aws.String("no value"), // TODO:
+			AnalyticsEndpointId: aws.String("confirm signup"), // TODO:
 		},
 		ClientId:           aws.String(clientID),
 		ConfirmationCode:   aws.String(code),
@@ -202,6 +201,42 @@ func (c *CognitoClient) ValidateToken(tokenStr string) error {
 	}
 
 	return nil // valid token, no error
+}
+
+// ForgotPassword TODO: how to include username in the url/reset password sent by Cognito?
+func (c *CognitoClient) ForgotPassword(username string) (*cogIdp.ForgotPasswordOutput, error) {
+	userInput := &cogIdp.ForgotPasswordInput{
+		AnalyticsMetadata: &cogIdp.AnalyticsMetadataType{
+			AnalyticsEndpointId: aws.String("forgot password"), // TODO:
+		},
+		ClientId:   aws.String(clientID),
+		SecretHash: aws.String(c.SecretHash(username)),
+		UserContextData: &cogIdp.UserContextDataType{
+			EncodedData: aws.String("encoded info here"),
+		},
+		Username: aws.String(username),
+	}
+	log.Infof("ForgotPassword request sent to Cognito for username: %s\n", username)
+
+	return idpClient.ForgotPassword(userInput)
+}
+
+func (c *CognitoClient) ConfirmForgotPassword(newPass, code, username string) (*cogIdp.ConfirmForgotPasswordOutput, error) {
+	userInput := &cogIdp.ConfirmForgotPasswordInput{
+		AnalyticsMetadata: &cogIdp.AnalyticsMetadataType{
+			AnalyticsEndpointId: aws.String("confirm forgot password"), // TODO:
+		},
+		ClientId:         aws.String(clientID),
+		ConfirmationCode: aws.String(code),
+		Password:         aws.String(newPass),
+		SecretHash:       aws.String(c.SecretHash(username)),
+		UserContextData: &cogIdp.UserContextDataType{
+			EncodedData: aws.String("encoded info here"),
+		},
+		Username: aws.String(username),
+	}
+
+	return idpClient.ConfirmForgotPassword(userInput)
 }
 
 /************ helper functions below ************/
