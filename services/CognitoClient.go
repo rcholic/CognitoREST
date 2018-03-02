@@ -34,6 +34,7 @@ type AWSCognito interface {
 	ValidateToken(string, map[string]JWKKey) error
 	ForgotPassword(string) (*cogIdp.ForgotPasswordOutput, error)
 	ConfirmForgotPassword(string, string, string) (*cogIdp.ConfirmForgotPasswordOutput, error)
+	ChangePassword(string, string, string) (*cogIdp.ChangePasswordOutput, error)
 }
 
 /**
@@ -239,6 +240,16 @@ func (c *CognitoClient) ConfirmForgotPassword(newPass, code, username string) (*
 	return idpClient.ConfirmForgotPassword(userInput)
 }
 
+func (c *CognitoClient) ChangePassword(accessToken, prevPass, newPass string) (*cogIdp.ChangePasswordOutput, error) {
+	userInput := &cogIdp.ChangePasswordInput{
+		AccessToken:      aws.String(accessToken),
+		PreviousPassword: aws.String(prevPass),
+		ProposedPassword: aws.String(newPass),
+	}
+
+	return idpClient.ChangePassword(userInput)
+}
+
 /************ helper functions below ************/
 func extractToken(tokenStr, regionName, poolID string, jwk map[string]JWKKey) (*jwt.Token, error) {
 
@@ -317,8 +328,8 @@ func getJWK(jwkURL string) map[string]JWKKey {
 	getJSON(jwkURL, jwk)
 
 	jwkMap := make(map[string]JWKKey, 0)
-	for _, jwk := range jwk.Keys {
-		jwkMap[jwk.Kid] = jwk
+	for _, entryValue := range jwk.Keys {
+		jwkMap[entryValue.Kid] = entryValue
 	}
 	return jwkMap
 }

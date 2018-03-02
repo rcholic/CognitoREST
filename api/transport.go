@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -48,28 +49,56 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 		options...,
 	))
 
-	r.Methods("GET").Path("/user/{username}/{code}").Handler(httptransport.NewServer(
+	r.Methods("GET").Path("/user/confirm/{username}/{code}").Handler(httptransport.NewServer(
 		e.ConfirmSignUpEndpoint,
 		decodeConfirmSignUpRequest,
 		encodeResponse,
 		options...,
 	))
 
-	r.Methods("POST").Path("/user/forgotpassword").Handler(httptransport.NewServer(
+	r.Methods("POST").Path("/user/forgot_password").Handler(httptransport.NewServer(
 		e.ForgotPasswordEndpoint,
 		decodeForgotPasswordRequest,
 		encodeResponse,
 		options...,
 	))
 
-	r.Methods("POST").Path("/user/resetpassword").Handler(httptransport.NewServer(
+	r.Methods("POST").Path("/user/reset_password").Handler(httptransport.NewServer(
 		e.ConfirmForgotPasswordEndpoint,
 		decodeConfirmForgotPasswordRequest,
 		encodeResponse,
 		options...,
 	))
 
+	r.Methods("POST").Path("/user/change_password").Handler(httptransport.NewServer(
+		e.ChangePasswordEndpoint,
+		decodeChangePasswordRequest,
+		encodeResponse,
+		options...,
+	))
+	// TODO: write jwt middleware to secure APIs
+
 	return r
+}
+
+func decodeChangePasswordRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	tokens, ok := r.Header["Authorization"]
+	var token string
+	changePassRequest := changePasswordRequest{}
+	defer r.Body.Close()
+
+	if ok && len(tokens) > 0 {
+		token = tokens[0]
+		token = strings.TrimPrefix(token, "Bearer ") // Bearer token in header's Authorization field
+
+		if err := json.NewDecoder(r.Body).Decode(&changePassRequest); err != nil {
+			logrus.Errorf("wrong decoding json in change password request: %s\n", err)
+			return changePassRequest, ErrInvalidRequest
+		}
+		changePassRequest.AccessToken = token
+	}
+
+	return changePassRequest, nil
 }
 
 func decodeConfirmForgotPasswordRequest(_ context.Context, r *http.Request) (interface{}, error) {

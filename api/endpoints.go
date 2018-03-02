@@ -13,6 +13,7 @@ type EndPoints struct {
 	ConfirmSignUpEndpoint         endpoint.Endpoint
 	ForgotPasswordEndpoint        endpoint.Endpoint
 	ConfirmForgotPasswordEndpoint endpoint.Endpoint
+	ChangePasswordEndpoint        endpoint.Endpoint
 }
 
 func MakeEndpoints(s UserService) EndPoints {
@@ -23,6 +24,7 @@ func MakeEndpoints(s UserService) EndPoints {
 		ConfirmSignUpEndpoint:         MakeConfirmSignUpEndpoint(s),
 		ForgotPasswordEndpoint:        MakeForgotPasswordEndpoint(s),
 		ConfirmForgotPasswordEndpoint: MakeConfirmForgotPasswordEndpoint(s),
+		ChangePasswordEndpoint:        MakeChangePasswordEndpoint(s),
 	}
 }
 
@@ -68,6 +70,13 @@ func MakeConfirmForgotPasswordEndpoint(s UserService) endpoint.Endpoint {
 	}
 }
 
+func MakeChangePasswordEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(changePasswordRequest)
+		return s.ChangePassword(req.AccessToken, req.PrevPassword, req.NewPassword)
+	}
+}
+
 type signupRequest struct {
 	Username    string
 	Password    string
@@ -95,4 +104,10 @@ type confirmForgotPasswordRequest struct {
 	NewPassword string
 	ConfirmCode string
 	Username    string
+}
+
+type changePasswordRequest struct {
+	AccessToken  string
+	PrevPassword string
+	NewPassword  string
 }

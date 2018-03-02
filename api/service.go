@@ -19,6 +19,7 @@ type UserService interface {
 	ConfirmSingUp(code, username string) (*cogIdp.ConfirmSignUpOutput, error)
 	ForgotPassword(username string) (*cogIdp.ForgotPasswordOutput, error)
 	ConfirmForgotPassword(newPass, code, username string) (*cogIdp.ConfirmForgotPasswordOutput, error)
+	ChangePassword(accessToken, prevPass, newPass string) (*cogIdp.ChangePasswordOutput, error)
 }
 
 type localUserService struct{}
@@ -57,4 +58,8 @@ func (s *localUserService) ForgotPassword(username string) (*cogIdp.ForgotPasswo
 
 func (s *localUserService) ConfirmForgotPassword(newPass, code, username string) (*cogIdp.ConfirmForgotPasswordOutput, error) {
 	return cognitoClient.ConfirmForgotPassword(newPass, code, username)
+}
+
+func (s *localUserService) ChangePassword(accessToken, prevPass, newPass string) (*cogIdp.ChangePasswordOutput, error) {
+	return cognitoClient.ChangePassword(accessToken, prevPass, newPass)
 }
