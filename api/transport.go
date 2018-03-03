@@ -21,6 +21,7 @@ var (
 	ErrInvalidRequest = errors.New("Invalid Request")
 )
 
+// MakeHTTPHandler creates routes in the API
 func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 	r := mux.NewRouter().StrictSlash(false)
 	options := []httptransport.ServerOption{
@@ -81,20 +82,29 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 	return r
 }
 
+// ExtractToken extracts jwt token from the header "Authorization" field with Bearer
+func ExtractToken(r *http.Request) (string, bool) {
+
+	tokens := r.Header.Get("Authorization")
+	if len(tokens) < 8 || !strings.EqualFold(tokens[0:7], "Bearer ") {
+		return "", false // empty token
+	}
+
+	return tokens[7:], true
+}
+
 func decodeChangePasswordRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	tokens, ok := r.Header["Authorization"]
-	var token string
-	changePassRequest := changePasswordRequest{}
+
 	defer r.Body.Close()
+	token, ok := ExtractToken(r)
+	changePassRequest := changePasswordRequest{}
 
-	if ok && len(tokens) > 0 {
-		token = tokens[0]
-		token = strings.TrimPrefix(token, "Bearer ") // Bearer token in header's Authorization field
+	if err := json.NewDecoder(r.Body).Decode(&changePassRequest); err != nil {
+		logrus.Errorf("wrong decoding json in change password request: %s\n", err)
+		return changePassRequest, ErrInvalidRequest
+	}
 
-		if err := json.NewDecoder(r.Body).Decode(&changePassRequest); err != nil {
-			logrus.Errorf("wrong decoding json in change password request: %s\n", err)
-			return changePassRequest, ErrInvalidRequest
-		}
+	if ok {
 		changePassRequest.AccessToken = token
 	}
 

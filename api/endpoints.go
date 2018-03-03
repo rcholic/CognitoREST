@@ -6,6 +6,19 @@ import (
 	"github.com/go-kit/kit/endpoint"
 )
 
+// type Middleware func(endpoint.Endpoint) endpoint.Endpoint
+
+// func jwtAuthMiddleware(logger log.Logger) Middleware {
+// 	return func(next endpoint.Endpoint) endpoint.Endpoint {
+// 		return func(ctx context.Context, r interface{}) (interface{}, error) {
+// 			logger.Log("msg from middleware: ", "calling endpoint")
+// 			// ExtractToken(r.(http.Request)) // get jwt token from header
+// 			defer logger.Log("msg", "called endpoint")
+// 			return next(ctx, r)
+// 		}
+// 	}
+// }
+
 type EndPoints struct {
 	SignUpEndpoint                endpoint.Endpoint
 	SignInEndpoint                endpoint.Endpoint
