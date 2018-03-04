@@ -36,6 +36,8 @@ func main() {
 	var service api.UserService
 	{
 		service = api.NewUserService()
+		service = api.LoggingMiddleware(logger)(service)
+		// TODO: instrumenting service
 	}
 
 	endpoints := api.MakeEndpoints(service)
