@@ -4,10 +4,12 @@ import (
 	"errors"
 
 	cogIdp "github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
+	"github.com/rcholic/CognitoREST/models"
 	"github.com/rcholic/CognitoREST/services"
 )
 
 var (
+	// ErrUnauthorized not authorized error 401
 	ErrUnauthorized = errors.New("Unauthorized")
 	cognitoClient   = new(services.CognitoClient)
 )
@@ -20,6 +22,7 @@ type UserService interface {
 	ForgotPassword(username string) (*cogIdp.ForgotPasswordOutput, error)
 	ConfirmForgotPassword(newPass, code, username string) (*cogIdp.ConfirmForgotPasswordOutput, error)
 	ChangePassword(accessToken, prevPass, newPass string) (*cogIdp.ChangePasswordOutput, error)
+	ValidateJwtToken(tokenStr string) (models.AuthenticatedUser, error)
 }
 
 type localUserService struct{}
@@ -62,4 +65,8 @@ func (s *localUserService) ConfirmForgotPassword(newPass, code, username string)
 
 func (s *localUserService) ChangePassword(accessToken, prevPass, newPass string) (*cogIdp.ChangePasswordOutput, error) {
 	return cognitoClient.ChangePassword(accessToken, prevPass, newPass)
+}
+
+func (s *localUserService) ValidateJwtToken(token string) (models.AuthenticatedUser, error) {
+	return cognitoClient.ValidateToken(token)
 }

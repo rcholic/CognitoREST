@@ -23,6 +23,16 @@ type User struct {
 	UserAttributes []*cogIdp.AttributeType
 }
 
+type AuthenticatedUser struct {
+	AccessToken string
+	IDToken     string
+	Username    string
+	Email       string
+	AuthTime    int64
+	TokenUse    string
+	Level       string
+}
+
 // Sanitize removes sensitive field value
 func (u *User) Sanitize() {
 	u.Password = "****"

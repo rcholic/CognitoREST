@@ -20,6 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	cogIdp "github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/rcholic/CognitoREST/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -175,6 +176,7 @@ func (c *CognitoClient) GetUser(username string) (*cogIdp.AdminGetUserOutput, er
 	return idpClient.AdminGetUser(&userInput)
 }
 
+// ConfirmSignUp confirms user registration link sent to their email
 func (c *CognitoClient) ConfirmSignUp(code, username string) (*cogIdp.ConfirmSignUpOutput, error) {
 	userInput := cogIdp.ConfirmSignUpInput{
 		AnalyticsMetadata: &cogIdp.AnalyticsMetadataType{
@@ -192,23 +194,23 @@ func (c *CognitoClient) ConfirmSignUp(code, username string) (*cogIdp.ConfirmSig
 }
 
 // ValidateToken validates the token provided by client
-func (c *CognitoClient) ValidateToken(tokenStr string) error {
+func (c *CognitoClient) ValidateToken(tokenStr string) (models.AuthenticatedUser, error) {
 	token, err := extractToken(tokenStr, region, userpoolID, jwkMap)
-
+	authUser := models.AuthenticatedUser{}
 	if err != nil {
-		return err
+		return authUser, err
 	} else if !token.Valid {
-		return ErrInvalidToken
+		return authUser, ErrInvalidToken
 	}
 
-	return nil // valid token, no error
+	return authUser, nil // TODO: populate fields upon successful validation
 }
 
-// ForgotPassword TODO: how to include username in the url/reset password sent by Cognito?
+// ForgotPassword requires custom_message in Cognito with a Lambda function to custom link with username and confirm code
 func (c *CognitoClient) ForgotPassword(username string) (*cogIdp.ForgotPasswordOutput, error) {
 	userInput := &cogIdp.ForgotPasswordInput{
 		AnalyticsMetadata: &cogIdp.AnalyticsMetadataType{
-			AnalyticsEndpointId: aws.String("forgot password"), // TODO:
+			AnalyticsEndpointId: aws.String("forgot password"), // TODO: fill in ID
 		},
 		ClientId:   aws.String(clientID),
 		SecretHash: aws.String(c.SecretHash(username)),
@@ -222,6 +224,7 @@ func (c *CognitoClient) ForgotPassword(username string) (*cogIdp.ForgotPasswordO
 	return idpClient.ForgotPassword(userInput)
 }
 
+// ConfirmForgotPassword
 func (c *CognitoClient) ConfirmForgotPassword(newPass, code, username string) (*cogIdp.ConfirmForgotPasswordOutput, error) {
 	userInput := &cogIdp.ConfirmForgotPasswordInput{
 		AnalyticsMetadata: &cogIdp.AnalyticsMetadataType{
@@ -240,6 +243,7 @@ func (c *CognitoClient) ConfirmForgotPassword(newPass, code, username string) (*
 	return idpClient.ConfirmForgotPassword(userInput)
 }
 
+// ChangePassword resets password for the user (a link to their email)
 func (c *CognitoClient) ChangePassword(accessToken, prevPass, newPass string) (*cogIdp.ChangePasswordOutput, error) {
 	userInput := &cogIdp.ChangePasswordInput{
 		AccessToken:      aws.String(accessToken),

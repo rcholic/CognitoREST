@@ -5,9 +5,9 @@ import (
 	"time"
 
 	cogIdp "github.com/aws/aws-sdk-go/service/cognitoidentityprovider"
-
 	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
+	"github.com/rcholic/CognitoREST/models"
 	"github.com/sirupsen/logrus"
 )
 
@@ -132,6 +132,19 @@ func (mw loggingMiddleware) ChangePassword(accessToken, prevPass, newPass string
 		)
 	}(time.Now())
 	return mw.next.ChangePassword(accessToken, prevPass, newPass)
+}
+
+func (mw loggingMiddleware) ValidateJwtToken(token string) (models.AuthenticatedUser, error) {
+
+	defer func(begin time.Time) {
+		mw.logger.Log(
+			"method", "ValidateJwtToken",
+			"token", "*****",
+			"took", time.Since(begin),
+		)
+	}(time.Now())
+
+	return mw.next.ValidateJwtToken(token)
 }
 
 // TODO: instrumentation to be added

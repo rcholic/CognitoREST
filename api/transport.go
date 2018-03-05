@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"reflect"
@@ -16,9 +17,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type userCtxKeyType string
+
+const (
+	ContextErrorKey userCtxKeyType = "Error"
+)
+
 var (
 	// ErrInvalidRequest  request error
 	ErrInvalidRequest = errors.New("Invalid Request")
+	// ErrContextRequest error found in context in field ContextErrorKey
+	ErrContextRequest   = errors.New("Context Error")
+	userServiceInstance = NewUserService()
 )
 
 // MakeHTTPHandler creates routes in the API
@@ -27,6 +37,8 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorLogger(logger),
 		httptransport.ServerErrorEncoder(encodeError),
+		httptransport.ServerBefore(before),
+		httptransport.ServerAfter(after),
 	}
 
 	r.Methods("POST").Path("/user/signup").Handler(httptransport.NewServer(
@@ -47,7 +59,7 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 		e.GetUserEndpoint,
 		decodeGetUserRequest,
 		encodeResponse,
-		options...,
+		append(options, httptransport.ServerBefore(validateJwt))..., // require jwt in context
 	))
 
 	r.Methods("GET").Path("/user/confirm/{username}/{code}").Handler(httptransport.NewServer(
@@ -77,7 +89,6 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 		encodeResponse,
 		options...,
 	))
-	// TODO: write jwt middleware to secure APIs
 
 	return r
 }
@@ -150,15 +161,17 @@ func decodeConfirmSignUpRequest(_ context.Context, r *http.Request) (interface{}
 	return confirmRequest, nil
 }
 
-func decodeGetUserRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeGetUserRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	userRequest := getuserRequest{}
 	defer r.Body.Close()
 	vars := mux.Vars(r)
 	username, ok := vars["username"]
-
 	if !ok {
-		// TODO: logging
 		return userRequest, ErrInvalidRequest
+	}
+	if contextErr := ctx.Value(ContextErrorKey); contextErr != nil {
+		logrus.Warnf("contextErr: %v\n", contextErr)
+		return userRequest, ErrContextRequest
 	}
 
 	return getuserRequest{Username: username}, nil
@@ -190,6 +203,37 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 	// All of our response objects are JSON serializable, so we just do that.
 	w.Header().Set("Content-Type", "application/hal+json")
 	return json.NewEncoder(w).Encode(response)
+}
+
+// before processing request, make sure jwt auth token is in header
+func validateJwt(ctx context.Context, r *http.Request) context.Context {
+	token, ok := ExtractToken(r)
+	errorMsg := ""
+	if !ok {
+		errorMsg = "No auth token found;"
+	}
+	if _, err := userServiceInstance.ValidateJwtToken(token); err != nil {
+		errorMsg += fmt.Sprintf("%v;", err)
+	}
+	if errorMsg != "" {
+		ctx = context.WithValue(ctx, ContextErrorKey, errorMsg)
+	}
+
+	return ctx
+}
+
+func before(ctx context.Context, r *http.Request) context.Context {
+	// TODO: put data in ctx,
+	return ctx
+}
+
+func after(ctx context.Context, w http.ResponseWriter) context.Context {
+
+	// FIXME: how to pass error to encodeError ?
+	errorMsg := ctx.Value(ContextErrorKey)
+	logrus.Warnf("warning errorMsg in after: %v\n", errorMsg)
+
+	return ctx
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {

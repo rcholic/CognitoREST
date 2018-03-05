@@ -4,20 +4,8 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/endpoint"
+	"github.com/sirupsen/logrus"
 )
-
-// type Middleware func(endpoint.Endpoint) endpoint.Endpoint
-
-// func jwtAuthMiddleware(logger log.Logger) Middleware {
-// 	return func(next endpoint.Endpoint) endpoint.Endpoint {
-// 		return func(ctx context.Context, r interface{}) (interface{}, error) {
-// 			logger.Log("msg from middleware: ", "calling endpoint")
-// 			// ExtractToken(r.(http.Request)) // get jwt token from header
-// 			defer logger.Log("msg", "called endpoint")
-// 			return next(ctx, r)
-// 		}
-// 	}
-// }
 
 type EndPoints struct {
 	SignUpEndpoint                endpoint.Endpoint
@@ -27,6 +15,7 @@ type EndPoints struct {
 	ForgotPasswordEndpoint        endpoint.Endpoint
 	ConfirmForgotPasswordEndpoint endpoint.Endpoint
 	ChangePasswordEndpoint        endpoint.Endpoint
+	ValidateTokenEndpoint         endpoint.Endpoint // NOTE: for API gateway to use only(?)
 }
 
 func MakeEndpoints(s UserService) EndPoints {
@@ -38,6 +27,7 @@ func MakeEndpoints(s UserService) EndPoints {
 		ForgotPasswordEndpoint:        MakeForgotPasswordEndpoint(s),
 		ConfirmForgotPasswordEndpoint: MakeConfirmForgotPasswordEndpoint(s),
 		ChangePasswordEndpoint:        MakeChangePasswordEndpoint(s),
+		ValidateTokenEndpoint:         MakeValidateTokenEndpoint(s),
 	}
 }
 
@@ -51,12 +41,24 @@ func MakeSignUpEndpoint(s UserService) endpoint.Endpoint {
 func MakeSignInEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(signinRequest)
-		return s.SignIn(req.Username, req.Password)
+		resp, err := s.SignIn(req.Username, req.Password)
+
+		if err == nil {
+			accessT := resp.AuthenticationResult.AccessToken
+			_ = resp.AuthenticationResult.IdToken
+			_ = resp.AuthenticationResult.RefreshToken
+			c2 := context.WithValue(ctx, "accessToken", *accessT)
+			ctx = c2
+		}
+
+		return resp, err
 	}
 }
 
 func MakeGetUserEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		token := ctx.Value("accessToken")
+		logrus.Infof("token get it? %v\n", token)
 		req := request.(getuserRequest)
 		return s.GetUser(req.Username)
 	}
@@ -87,6 +89,13 @@ func MakeChangePasswordEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 		req := request.(changePasswordRequest)
 		return s.ChangePassword(req.AccessToken, req.PrevPassword, req.NewPassword)
+	}
+}
+
+func MakeValidateTokenEndpoint(s UserService) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
+		req := request.(validateTokenRequest)
+		return s.ValidateJwtToken(req.JwtToken)
 	}
 }
 
@@ -123,4 +132,8 @@ type changePasswordRequest struct {
 	AccessToken  string
 	PrevPassword string
 	NewPassword  string
+}
+
+type validateTokenRequest struct {
+	JwtToken string
 }
