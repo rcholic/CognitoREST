@@ -10,11 +10,11 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/go-kit/kit/log"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
+	stdopentracing "github.com/opentracing/opentracing-go"
+	"github.com/sirupsen/logrus"
 )
 
 type userCtxKeyType string
@@ -32,7 +32,7 @@ var (
 )
 
 // MakeHTTPHandler creates routes in the API
-func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
+func MakeHTTPHandler(e EndPoints, logger log.Logger, tracer stdopentracing.Tracer) *mux.Router {
 	r := mux.NewRouter().StrictSlash(false)
 	options := []httptransport.ServerOption{
 		httptransport.ServerErrorLogger(logger),
@@ -46,6 +46,7 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 		decodeSignUpRequest,
 		encodeResponse,
 		options...,
+	// append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /user/signup", logger)))...,
 	))
 
 	r.Methods("POST").Path("/user/signin").Handler(httptransport.NewServer(
@@ -53,13 +54,15 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 		decodeSignInRequest,
 		encodeResponse,
 		options...,
+	// append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "POST /user/signin", logger)))...,
 	))
 
 	r.Methods("GET").Path("/user/{username}").Handler(httptransport.NewServer(
 		e.GetUserEndpoint,
 		decodeGetUserRequest,
 		encodeResponse,
-		append(options, httptransport.ServerBefore(validateJwt))..., // require jwt in context
+		options...,
+	// append(options, httptransport.ServerBefore(opentracing.FromHTTPRequest(tracer, "GET /user/{username}", logger), validateJwt))..., // require jwt in context
 	))
 
 	r.Methods("GET").Path("/user/confirm/{username}/{code}").Handler(httptransport.NewServer(
@@ -90,6 +93,13 @@ func MakeHTTPHandler(e EndPoints, logger log.Logger) *mux.Router {
 		options...,
 	))
 
+	r.Methods("POST").Path("/user/validate_token").Handler(httptransport.NewServer(
+		e.ValidateTokenEndpoint,
+		decodeValidateJwtTokenRequest,
+		encodeResponse,
+		options...,
+	))
+
 	return r
 }
 
@@ -102,6 +112,18 @@ func ExtractToken(r *http.Request) (string, bool) {
 	}
 
 	return tokens[7:], true
+}
+
+func decodeValidateJwtTokenRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	defer r.Body.Close()
+	validateTokenReq := validateTokenRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&validateTokenReq); err != nil {
+		logrus.Errorf("wrong decoding json in validate jwt token request: %s\n", err)
+		return validateTokenReq, ErrInvalidRequest
+	}
+
+	return validateTokenReq, nil
 }
 
 func decodeChangePasswordRequest(_ context.Context, r *http.Request) (interface{}, error) {

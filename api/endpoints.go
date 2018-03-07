@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/endpoint"
+	"github.com/go-kit/kit/tracing/opentracing"
+	stdopentracing "github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,16 +20,16 @@ type EndPoints struct {
 	ValidateTokenEndpoint         endpoint.Endpoint // NOTE: for API gateway to use only(?)
 }
 
-func MakeEndpoints(s UserService) EndPoints {
+func MakeEndpoints(s UserService, tracer stdopentracing.Tracer) EndPoints {
 	return EndPoints{
-		SignUpEndpoint:                MakeSignUpEndpoint(s),
-		SignInEndpoint:                MakeSignInEndpoint(s),
-		GetUserEndpoint:               MakeGetUserEndpoint(s),
-		ConfirmSignUpEndpoint:         MakeConfirmSignUpEndpoint(s),
-		ForgotPasswordEndpoint:        MakeForgotPasswordEndpoint(s),
-		ConfirmForgotPasswordEndpoint: MakeConfirmForgotPasswordEndpoint(s),
-		ChangePasswordEndpoint:        MakeChangePasswordEndpoint(s),
-		ValidateTokenEndpoint:         MakeValidateTokenEndpoint(s),
+		SignUpEndpoint:                opentracing.TraceServer(tracer, "POST /user/signup")(MakeSignUpEndpoint(s)),
+		SignInEndpoint:                opentracing.TraceServer(tracer, "POST /user/signin")(MakeSignInEndpoint(s)),
+		GetUserEndpoint:               opentracing.TraceServer(tracer, "GET /user/{username}")(MakeGetUserEndpoint(s)),
+		ConfirmSignUpEndpoint:         opentracing.TraceServer(tracer, "GET /user/confirm/{username}/{code}")(MakeConfirmSignUpEndpoint(s)),
+		ForgotPasswordEndpoint:        opentracing.TraceServer(tracer, "POST /user/forgot_password")(MakeForgotPasswordEndpoint(s)),
+		ConfirmForgotPasswordEndpoint: opentracing.TraceServer(tracer, "POST /user/reset_password")(MakeConfirmForgotPasswordEndpoint(s)),
+		ChangePasswordEndpoint:        opentracing.TraceServer(tracer, "POST /user/change_password")(MakeChangePasswordEndpoint(s)),
+		ValidateTokenEndpoint:         opentracing.TraceServer(tracer, "GET /login")(MakeValidateTokenEndpoint(s)),
 	}
 }
 

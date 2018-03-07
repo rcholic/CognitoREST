@@ -9,14 +9,32 @@ import (
 	"syscall"
 
 	"github.com/go-kit/kit/log"
+	stdopentracing "github.com/opentracing/opentracing-go"
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
+	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/rcholic/CognitoREST/api"
 )
 
 var (
 	port string
+	zip  string
+)
+
+var (
+	HTTPLatency = stdprometheus.NewHistogramVec(stdprometheus.HistogramOpts{
+		Name:    "request_duration_seconds",
+		Help:    "Time (in seconds) spent serving HTTP requests.",
+		Buckets: stdprometheus.DefBuckets,
+	}, []string{"method", "route", "status_code", "isWS"})
+)
+
+const (
+	ServiceName = "user"
 )
 
 func init() {
+	stdprometheus.MustRegister(HTTPLatency)
+	// flag.StringVar(&zip, "zipkin", os.Getenv("ZIPKIN"), "Zipkin address")
 	flag.StringVar(&port, "port", "3000", "Port on which to run")
 }
 
@@ -33,6 +51,34 @@ func main() {
 		logger = log.With(logger, "caller", log.DefaultCaller)
 	}
 
+	var tracer stdopentracing.Tracer
+	{
+		if zip == "" {
+			tracer = stdopentracing.NoopTracer{}
+		} else {
+			logger := log.With(logger, "tracer", "Zipkin")
+			logger.Log("addr", zip)
+			collector, err := zipkin.NewHTTPCollector(
+				zip,
+				zipkin.HTTPLogger(logger),
+			)
+			logger.Log("collector is: %v\n", collector)
+			if err != nil {
+				logger.Log("err", err)
+				os.Exit(1)
+			}
+			// TODO: set up Zipkin tracer server here
+			// tracer, err = zipkin.NewTracer(
+			// 	zipkin.NewRecorder(collector, false, fmt.Sprintf("%v:%v", host, port), ServiceName),
+			// )
+			// if err != nil {
+			// 	logger.Log("err", err)
+			// 	os.Exit(1)
+			// }
+		}
+		stdopentracing.InitGlobalTracer(tracer)
+	}
+
 	var service api.UserService
 	{
 		service = api.NewUserService()
@@ -40,9 +86,9 @@ func main() {
 		// TODO: instrumenting service
 	}
 
-	endpoints := api.MakeEndpoints(service)
+	endpoints := api.MakeEndpoints(service, tracer)
 
-	router := api.MakeHTTPHandler(endpoints, logger)
+	router := api.MakeHTTPHandler(endpoints, logger, tracer)
 
 	go func() {
 		logger.Log("transport", "HTTP", "port", port)
