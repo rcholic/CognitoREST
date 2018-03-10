@@ -49,7 +49,7 @@ func MakeSignInEndpoint(s UserService) endpoint.Endpoint {
 			accessT := resp.AuthenticationResult.AccessToken
 			_ = resp.AuthenticationResult.IdToken
 			_ = resp.AuthenticationResult.RefreshToken
-			c2 := context.WithValue(ctx, "accessToken", *accessT)
+			c2 := context.WithValue(ctx, ContextAccessTokenKey, *accessT)
 			ctx = c2
 		}
 

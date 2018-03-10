@@ -24,13 +24,15 @@ type User struct {
 }
 
 type AuthenticatedUser struct {
-	AccessToken string
-	IDToken     string
-	Username    string
-	Email       string
-	AuthTime    int64
-	TokenUse    string
-	Level       string
+	// Token           *jwt.Token
+	Username        string
+	AuthTime        float64
+	TokenExpireTime float64
+	TokenUse        string
+	Level           string
+	ClientAppID     string
+	UUID            string
+	IsTokenValid    bool
 }
 
 // Sanitize removes sensitive field value

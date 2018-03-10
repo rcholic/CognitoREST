@@ -196,11 +196,37 @@ func (c *CognitoClient) ConfirmSignUp(code, username string) (*cogIdp.ConfirmSig
 // ValidateToken validates the token provided by client
 func (c *CognitoClient) ValidateToken(tokenStr string) (models.AuthenticatedUser, error) {
 	token, err := extractToken(tokenStr, region, userpoolID, jwkMap)
-	authUser := models.AuthenticatedUser{}
+	authUser := models.AuthenticatedUser{} // TODO
 	if err != nil {
 		return authUser, err
 	} else if !token.Valid {
 		return authUser, ErrInvalidToken
+	}
+
+	authUser.IsTokenValid = token.Valid
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		log.Infof("jwt.MapClaims: %v\n", claims)
+		if tokenUse, exists := claims["token_use"]; exists {
+			authUser.TokenUse = tokenUse.(string)
+		}
+		if scope, exists := claims["scope"]; exists {
+			authUser.Level = scope.(string) // e.g. "aws.cognito.signin.user.admin"
+		}
+		if authTime, exists := claims["auth_time"]; exists {
+			authUser.AuthTime = authTime.(float64)
+		}
+		if expTime, exists := claims["exp"]; exists {
+			authUser.TokenExpireTime = expTime.(float64)
+		}
+		if clientID, exists := claims["client_id"]; exists {
+			authUser.ClientAppID = clientID.(string)
+		}
+		if uuid, exists := claims["sub"]; exists {
+			authUser.UUID = uuid.(string)
+		}
+		if username, exists := claims["username"]; exists {
+			authUser.Username = username.(string)
+		}
 	}
 
 	return authUser, nil // TODO: populate fields upon successful validation

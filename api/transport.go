@@ -20,7 +20,8 @@ import (
 type userCtxKeyType string
 
 const (
-	ContextErrorKey userCtxKeyType = "Error"
+	ContextErrorKey       userCtxKeyType = "Error"
+	ContextAccessTokenKey userCtxKeyType = "accessToken"
 )
 
 var (
