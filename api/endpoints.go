@@ -59,7 +59,7 @@ func MakeSignInEndpoint(s UserService) endpoint.Endpoint {
 
 func MakeGetUserEndpoint(s UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		token := ctx.Value("accessToken")
+		token := ctx.Value(ContextAccessTokenKey)
 		logrus.Infof("token get it? %v\n", token)
 		req := request.(getuserRequest)
 		return s.GetUser(req.Username)

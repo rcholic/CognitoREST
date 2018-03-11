@@ -1,0 +1,17 @@
+version: '2'
+
+services:
+    user:
+        build:
+            context: .
+        container_name: cognito_api
+        hostname: user
+        restart: always
+        read_only: true
+        environment:
+            - REGION=${REGION}
+            - CLIENT_ID=${CLIENT_ID}
+            - CLIENT_SECRET=${CLIENT_SECRET}
+            - USERPOOL_ID=${USERPOOL_ID}
+        ports:
+            - "8080:3000"
