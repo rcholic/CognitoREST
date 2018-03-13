@@ -130,11 +130,14 @@ func (c *CognitoClient) SignUp(username, password, confirmPass, email string) (*
 	// TODO: validate password and confirm pass, email...
 
 	userInput := cogIdp.SignUpInput{
-		Username:       aws.String(username),
-		Password:       aws.String(password),
-		SecretHash:     aws.String(c.SecretHash(username)),
-		UserAttributes: []*cogIdp.AttributeType{generateAttr("email", email)},
-		ClientId:       aws.String(clientID),
+		Username:   aws.String(username),
+		Password:   aws.String(password),
+		SecretHash: aws.String(c.SecretHash(username)),
+		UserAttributes: []*cogIdp.AttributeType{
+			generateAttr("email", email),
+			generateAttr("preferred_username", username), // this can be updated by user
+		},
+		ClientId: aws.String(clientID),
 	}
 
 	return idpClient.SignUp(&userInput)

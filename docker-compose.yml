@@ -13,5 +13,8 @@ services:
             - CLIENT_ID=${CLIENT_ID}
             - CLIENT_SECRET=${CLIENT_SECRET}
             - USERPOOL_ID=${USERPOOL_ID}
+            - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+            - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+
         ports:
             - "8080:3000"
