@@ -5,7 +5,7 @@ services:
         build:
             context: .
         container_name: cognito_api
-        hostname: user
+        # hostname: user
         restart: always
         read_only: true
         environment:
