@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	stdopentracing "github.com/opentracing/opentracing-go"
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/rcholic/CognitoREST/api"
 )
@@ -55,17 +56,17 @@ func main() {
 		if zip == "" {
 			tracer = stdopentracing.NoopTracer{}
 		} else {
-			// logger := log.With(logger, "tracer", "Zipkin")
-			// logger.Log("addr", zip)
-			// collector, err := zipkin.NewHTTPCollector(
-			// 	zip,
-			// 	zipkin.HTTPLogger(logger),
-			// )
-			// logger.Log("collector is: %v\n", collector)
-			// if err != nil {
-			// 	logger.Log("err", err)
-			// 	os.Exit(1)
-			// }
+			logger := log.With(logger, "tracer", "Zipkin")
+			logger.Log("addr", zip)
+			collector, err := zipkin.NewHTTPCollector(
+				zip,
+				zipkin.HTTPLogger(logger),
+			)
+			logger.Log("collector is: %v\n", collector)
+			if err != nil {
+				logger.Log("err", err)
+				os.Exit(1)
+			}
 
 			// TODO: set up Zipkin tracer server here
 			// tracer, err = zipkin.NewTracer(
