@@ -3,13 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/go-kit/kit/log"
 	stdopentracing "github.com/opentracing/opentracing-go"
+	zipkin "github.com/openzipkin/zipkin-go-opentracing"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/rcholic/CognitoREST/api"
 )
@@ -52,29 +55,39 @@ func main() {
 
 	var tracer stdopentracing.Tracer
 	{
+		// Find service local IP.
+		conn, err := net.Dial("udp", "8.8.8.8:80")
+		if err != nil {
+			logger.Log("err", err)
+			os.Exit(1)
+		}
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+		host := strings.Split(localAddr.String(), ":")[0]
+		defer conn.Close()
+
 		if zip == "" {
 			tracer = stdopentracing.NoopTracer{}
 		} else {
-			// logger := log.With(logger, "tracer", "Zipkin")
-			// logger.Log("addr", zip)
-			// collector, err := zipkin.NewHTTPCollector(
-			// 	zip,
-			// 	zipkin.HTTPLogger(logger),
-			// )
-			// logger.Log("collector is: %v\n", collector)
-			// if err != nil {
-			// 	logger.Log("err", err)
-			// 	os.Exit(1)
-			// }
+			logger := log.With(logger, "tracer", "Zipkin")
+			logger.Log("addr", zip)
+			collector, err := zipkin.NewHTTPCollector(
+				zip,
+				zipkin.HTTPLogger(logger),
+			)
+			logger.Log("collector is: %v\n", collector)
+			if err != nil {
+				logger.Log("err", err)
+				os.Exit(1)
+			}
 
 			// TODO: set up Zipkin tracer server here
-			// tracer, err = zipkin.NewTracer(
-			// 	zipkin.NewRecorder(collector, false, fmt.Sprintf("%v:%v", host, port), ServiceName),
-			// )
-			// if err != nil {
-			// 	logger.Log("err", err)
-			// 	os.Exit(1)
-			// }
+			tracer, err = zipkin.NewTracer(
+				zipkin.NewRecorder(collector, false, fmt.Sprintf("%v:%v", host, port), ServiceName),
+			)
+			if err != nil {
+				logger.Log("err", err)
+				os.Exit(1)
+			}
 		}
 		stdopentracing.InitGlobalTracer(tracer)
 	}
@@ -87,7 +100,6 @@ func main() {
 	}
 
 	endpoints := api.MakeEndpoints(service, tracer)
-
 	router := api.MakeHTTPHandler(endpoints, logger, tracer)
 
 	go func() {

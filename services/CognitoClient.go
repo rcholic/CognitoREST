@@ -288,7 +288,6 @@ func extractToken(tokenStr, regionName, poolID string, jwk map[string]JWKKey) (*
 
 	// 2. Decode the token string into JWT format.
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-
 		// cognito user pool : RS256
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
